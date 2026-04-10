@@ -60,7 +60,7 @@ export const SettingsModal = ({
                   className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg text-sm focus:ring-2 focus:ring-primary h-12 px-4 shadow-sm font-bold disabled:opacity-50"
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
-                  disabled={isFetchingModels || availableModels.length === 0}
+                  disabled={isFetchingModels}
                 >
                   {availableModels.length > 0 ? (
                     availableModels.map(model => (

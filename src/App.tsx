@@ -77,7 +77,7 @@ export default function App() {
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
-  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [availableModels, setAvailableModels] = useState<string[]>(['models/gemini-1.5-flash', 'models/gemini-1.5-pro']);
   const [selectedModel, setSelectedModel] = useState('models/gemini-1.5-flash');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
