@@ -29,18 +29,42 @@ export const listAvailableModels = async (apiKey: string): Promise<string[]> => 
   }
 };
 
+const parseAIResponse = (text: string) => {
+  try {
+    // Attempt to extract JSON from markdown code blocks
+    const jsonMatch = text.match(/```json\s?([\s\S]*?)\s?```/) || 
+                     text.match(/```\s?([\s\S]*?)\s?```/) ||
+                     [null, text];
+    
+    const cleanText = jsonMatch[1] ? jsonMatch[1].trim() : text.trim();
+    return JSON.parse(cleanText);
+  } catch (error) {
+    console.error("JSON Parsing Error:", error, "Raw Text:", text);
+    throw new Error("無法解析 AI 回傳的資料格式。");
+  }
+};
+
 export const createBaseLesson = async (
   inputText: string, 
   apiKey: string, 
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<Partial<Article>> => {
+  const isUrl = inputText.startsWith('http');
   const ai = new GoogleGenAI({ apiKey });
-  const model = ai.models.getGenerativeModel({ model: modelName });
+  
+  // Enable Google Search tool if it's a URL
+  const model = ai.models.getGenerativeModel({ 
+    model: modelName,
+    tools: isUrl ? [{ googleSearch: {} }] : undefined
+  });
+
   const response = await model.generateContent({
     contents: [{
       role: 'user',
       parts: [{
         text: `你是一位精通日文與繁體中文的專業翻譯達人。你的任務是協助協助日語學習者進行文本轉換。
+
+        ${isUrl ? `請先讀取以下網址的內容：${inputText}` : `待分析文本：${inputText}`}
 
         ### 行為準則：
         1. 針對內容進行兩次翻譯：
@@ -56,19 +80,18 @@ export const createBaseLesson = async (
           "description": "背景描述",
           "level": "N1-N5",
           "category": "分類",
-          "content": "標註過術語的原文",
+          "content": "標註過術語的原文内容",
           "translationLiteral": "直譯結果",
           "translationNatural": "意譯結果"
         }
 
-        待分析文本：
-        ${inputText}`
+        注意：請務必只輸出 JSON 格式。`
       }]
     }],
     generationConfig: { responseMimeType: "application/json" }
   });
 
-  return JSON.parse(response.text || '{}');
+  return parseAIResponse(response.text || '{}');
 };
 
 export const fetchVocabulary = async (
@@ -92,7 +115,7 @@ export const fetchVocabulary = async (
     generationConfig: { responseMimeType: "application/json" }
   });
 
-  return JSON.parse(response.text || '[]');
+  return parseAIResponse(response.text || '[]');
 };
 
 export const fetchLinguisticInsight = async (
@@ -107,7 +130,7 @@ export const fetchLinguisticInsight = async (
       role: 'user',
       parts: [{
         text: `請針對以下日文文本，提供專業的語言點評、文法解析或文化脈絡說明。
-        以繁體中文撰寫，字數約 100-200 字，展現專家視野。
+        以繁體中文撰寫，字數約 150-300 字，由淺入深，展現專家視野。
         
         文本：
         ${inputText}`

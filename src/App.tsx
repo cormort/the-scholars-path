@@ -141,9 +141,10 @@ export default function App() {
       setArticles([newArticle, ...articles]);
       setSelectedArticle(newArticle);
       setInputText('');
-    } catch (error) {
-      console.error("Synthesis failed:", error);
-      alert("合成失敗，請確認 API Key 與模型選擇。");
+    } catch (error: any) {
+      console.error("Synthesis failed details:", error);
+      const errorMsg = error.message || "未知錯誤";
+      alert(`合成失敗：${errorMsg}\n\n請檢查您的 API Key 設定、模型選擇，或查看瀏覽器主控台 (Inspect Console) 以獲取更多資訊。`);
     } finally {
       setIsSynthesizing(false);
     }
