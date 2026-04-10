@@ -22,6 +22,8 @@ import { SettingsModal } from './components/layout/SettingsModal';
 import { SynthesisPanel } from './components/features/dashboard/SynthesisPanel';
 import { ArticleGrid } from './components/features/dashboard/ArticleGrid';
 import { LessonView } from './components/features/lesson/LessonView';
+import { GlossaryView } from './components/features/glossary/GlossaryView';
+import { InsightsView } from './components/features/insights/InsightsView';
 
 // --- Mock Data (Translated to Traditional Chinese) ---
 
@@ -239,6 +241,19 @@ export default function App() {
               onSelectArticle={setSelectedArticle} 
             />
           </motion.div>
+        );
+      case 'insights':
+        return (
+          <InsightsView 
+            articles={articles} 
+            onSelectArticle={setSelectedArticle}
+          />
+        );
+      case 'glossary':
+        return (
+          <GlossaryView 
+            articles={articles}
+          />
         );
       default:
         return (
