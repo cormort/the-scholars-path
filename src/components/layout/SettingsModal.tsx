@@ -52,10 +52,18 @@ export const SettingsModal = ({
             
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">AI 模型供應商</label>
+                  <div className="flex items-center gap-3">
+                    <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">AI 模型供應商</label>
+                    <button 
+                      onClick={onFetchModels}
+                      disabled={isFetchingModels}
+                      className={`p-1 rounded-full hover:bg-surface-container transition-all ${isFetchingModels ? 'animate-spin opacity-50' : 'active:scale-95'}`}
+                      title="手動讀取最新模型"
+                    >
+                      <Zap size={12} className="text-primary" />
+                    </button>
+                  </div>
                   {isFetchingModels && <span className="text-[10px] text-primary animate-pulse font-bold">正在讀取最新模型...</span>}
-                </div>
                 <select 
                   className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg text-sm focus:ring-2 focus:ring-primary h-12 px-4 shadow-sm font-bold disabled:opacity-50"
                   value={selectedModel}

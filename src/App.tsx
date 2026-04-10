@@ -95,6 +95,9 @@ export default function App() {
   // Save API key
   React.useEffect(() => {
     localStorage.setItem('gemini_api_key', apiKey);
+    if (apiKey && apiKey.length >= 20) {
+      handleFetchModels(apiKey);
+    }
   }, [apiKey]);
 
   const handleFetchModels = async (key: string) => {
