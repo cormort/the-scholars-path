@@ -11,7 +11,12 @@ import { Zap } from 'lucide-react';
 import { Article, TabType } from './types';
 
 // Services
-import { synthesizeArticle, listAvailableModels } from './services/ai';
+import { 
+  createBaseLesson, 
+  fetchVocabulary, 
+  fetchLinguisticInsight, 
+  listAvailableModels 
+} from './services/ai';
 
 // Layout Components
 import { Header } from './components/layout/Header';
