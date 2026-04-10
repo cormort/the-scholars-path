@@ -53,7 +53,7 @@ export const createBaseLesson = async (
   const ai = new GoogleGenAI({ apiKey });
   
   // Enable Google Search tool if it's a URL
-  const model = ai.models.getGenerativeModel({ 
+  const model = ai.getGenerativeModel({ 
     model: modelName,
     tools: isUrl ? [{ googleSearch: {} }] : undefined
   });
@@ -100,7 +100,7 @@ export const fetchVocabulary = async (
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<Article['vocabulary']> => {
   const ai = new GoogleGenAI({ apiKey });
-  const model = ai.models.getGenerativeModel({ model: modelName });
+  const model = ai.getGenerativeModel({ model: modelName });
   const response = await model.generateContent({
     contents: [{
       role: 'user',
@@ -124,7 +124,7 @@ export const fetchLinguisticInsight = async (
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey });
-  const model = ai.models.getGenerativeModel({ model: modelName });
+  const model = ai.getGenerativeModel({ model: modelName });
   const response = await model.generateContent({
     contents: [{
       role: 'user',
