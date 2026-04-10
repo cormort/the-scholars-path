@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Key, ShieldCheck } from 'lucide-react';
+import { X, Key, ShieldCheck, Zap } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface SettingsModalProps {
