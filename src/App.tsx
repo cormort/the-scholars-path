@@ -11,7 +11,7 @@ import { Zap } from 'lucide-react';
 import { Article, TabType } from './types';
 
 // Services
-import { synthesizeArticle } from './services/ai';
+import { synthesizeArticle, listAvailableModels } from './services/ai';
 
 // Layout Components
 import { Header } from './components/layout/Header';
@@ -71,13 +71,27 @@ export default function App() {
   const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [selectedModel, setSelectedModel] = useState('models/gemini-1.5-flash');
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+
+  const handleFetchModels = async (key: string) => {
+    if (!key || key.length < 20) return;
+    setIsFetchingModels(true);
+    const models = await listAvailableModels(key);
+    setAvailableModels(models);
+    if (models.length > 0 && !models.includes(selectedModel)) {
+      setSelectedModel(models[0]);
+    }
+    setIsFetchingModels(false);
+  };
 
   const handleSynthesize = async () => {
     if (!inputText.trim()) return;
     setIsSynthesizing(true);
     
     try {
-      const result = await synthesizeArticle(inputText, apiKey);
+      const result = await synthesizeArticle(inputText, apiKey, selectedModel);
       const newArticle: Article = {
         id: Date.now().toString(),
         title: result.title || '未命名文章',
@@ -160,7 +174,15 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         apiKey={apiKey}
-        setApiKey={setApiKey}
+        setApiKey={(key) => {
+          setApiKey(key);
+          handleFetchModels(key);
+        }}
+        availableModels={availableModels}
+        selectedModel={selectedModel}
+        setSelectedModel={setSelectedModel}
+        isFetchingModels={isFetchingModels}
+        onFetchModels={() => handleFetchModels(apiKey)}
       />
     </div>
   );

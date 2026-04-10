@@ -8,9 +8,24 @@ interface SettingsModalProps {
   onClose: () => void;
   apiKey: string;
   setApiKey: (key: string) => void;
+  availableModels: string[];
+  selectedModel: string;
+  setSelectedModel: (model: string) => void;
+  isFetchingModels: boolean;
+  onFetchModels: () => void;
 }
 
-export const SettingsModal = ({ isOpen, onClose, apiKey, setApiKey }: SettingsModalProps) => {
+export const SettingsModal = ({ 
+  isOpen, 
+  onClose, 
+  apiKey, 
+  setApiKey,
+  availableModels,
+  selectedModel,
+  setSelectedModel,
+  isFetchingModels,
+  onFetchModels
+}: SettingsModalProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -37,10 +52,25 @@ export const SettingsModal = ({ isOpen, onClose, apiKey, setApiKey }: SettingsMo
             
             <div className="p-8 space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">AI 模型供應商</label>
-                <select className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg text-sm focus:ring-2 focus:ring-primary h-12 px-4 shadow-sm font-bold">
-                  <option>Google Gemini 1.5 Flash</option>
-                  <option>Google Gemini 1.5 Pro</option>
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">AI 模型供應商</label>
+                  {isFetchingModels && <span className="text-[10px] text-primary animate-pulse font-bold">正在讀取最新模型...</span>}
+                </div>
+                <select 
+                  className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg text-sm focus:ring-2 focus:ring-primary h-12 px-4 shadow-sm font-bold disabled:opacity-50"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  disabled={isFetchingModels || availableModels.length === 0}
+                >
+                  {availableModels.length > 0 ? (
+                    availableModels.map(model => (
+                      <option key={model} value={model}>
+                        {model.replace('models/', '').toUpperCase()}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="models/gemini-1.5-flash">GEMINI-1.5-FLASH (預設)</option>
+                  )}
                 </select>
               </div>
 
