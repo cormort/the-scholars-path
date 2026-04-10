@@ -92,11 +92,15 @@ export default function App() {
     localStorage.setItem('scholar_articles', JSON.stringify(articles));
   }, [articles]);
 
-  // Save API key
+  // Save API key & Debounced Model Fetch
   React.useEffect(() => {
     localStorage.setItem('gemini_api_key', apiKey);
+    
     if (apiKey && apiKey.length >= 20) {
-      handleFetchModels(apiKey);
+      const timer = setTimeout(() => {
+        handleFetchModels(apiKey);
+      }, 500); // 500ms debounce
+      return () => clearTimeout(timer);
     }
   }, [apiKey]);
 
@@ -299,7 +303,6 @@ export default function App() {
         apiKey={apiKey}
         setApiKey={(key) => {
           setApiKey(key);
-          handleFetchModels(key);
         }}
         availableModels={availableModels}
         selectedModel={selectedModel}
