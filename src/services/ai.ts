@@ -8,7 +8,7 @@ import { Article } from "../types";
 
 export const listAvailableModels = async (apiKey: string): Promise<string[]> => {
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI(apiKey);
     // Note: The @google/genai library might not expose listModels directly in some versions
     // If it's missing, we return a sane default list.
     // However, the standard REST API and some library versions support it.
@@ -50,7 +50,7 @@ export const createBaseLesson = async (
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<Partial<Article>> => {
   const isUrl = inputText.startsWith('http');
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(apiKey);
   
   // Enable Google Search tool if it's a URL
   const model = ai.getGenerativeModel({ 
@@ -99,7 +99,7 @@ export const fetchVocabulary = async (
   apiKey: string, 
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<Article['vocabulary']> => {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(apiKey);
   const model = ai.getGenerativeModel({ model: modelName });
   const response = await model.generateContent({
     contents: [{
@@ -123,7 +123,7 @@ export const fetchLinguisticInsight = async (
   apiKey: string, 
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(apiKey);
   const model = ai.getGenerativeModel({ model: modelName });
   const response = await model.generateContent({
     contents: [{
