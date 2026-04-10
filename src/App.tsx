@@ -68,42 +68,71 @@ export default function App() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [inputText, setInputText] = useState('');
   const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [articles, setArticles] = useState<Article[]>(INITIAL_ARTICLES);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [apiKey, setApiKey] = useState('');
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [selectedModel, setSelectedModel] = useState('models/gemini-1.5-flash');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
+  // Persistence: Load articles from localStorage or use initial
+  const [articles, setArticles] = useState<Article[]>(() => {
+    const saved = localStorage.getItem('scholar_articles');
+    return saved ? JSON.parse(saved) : INITIAL_ARTICLES;
+  });
+
+  // Save articles whenever they change
+  React.useEffect(() => {
+    localStorage.setItem('scholar_articles', JSON.stringify(articles));
+  }, [articles]);
+
+  // Save API key
+  React.useEffect(() => {
+    localStorage.setItem('gemini_api_key', apiKey);
+  }, [apiKey]);
+
   const handleFetchModels = async (key: string) => {
     if (!key || key.length < 20) return;
     setIsFetchingModels(true);
-    const models = await listAvailableModels(key);
-    setAvailableModels(models);
-    if (models.length > 0 && !models.includes(selectedModel)) {
-      setSelectedModel(models[0]);
+    try {
+      const models = await listAvailableModels(key);
+      setAvailableModels(models);
+      if (models.length > 0 && !models.includes(selectedModel)) {
+        setSelectedModel(models[0]);
+      }
+    } finally {
+      setIsFetchingModels(false);
     }
-    setIsFetchingModels(false);
+  };
+
+  const handleUpdateArticle = (id: string, updates: Partial<Article>) => {
+    setArticles(prev => prev.map(art => art.id === id ? { ...art, ...updates } : art));
+    if (selectedArticle?.id === id) {
+      setSelectedArticle(prev => prev ? { ...prev, ...updates } : null);
+    }
   };
 
   const handleSynthesize = async () => {
     if (!inputText.trim()) return;
-    setIsSynthesizing(true);
+    if (!apiKey) {
+      setIsSettingsOpen(true);
+      return;
+    }
     
+    setIsSynthesizing(true);
     try {
-      const result = await synthesizeArticle(inputText, apiKey, selectedModel);
+      const result = await createBaseLesson(inputText, apiKey, selectedModel);
       const newArticle: Article = {
         id: Date.now().toString(),
-        title: result.title || '未命名文章',
-        description: result.description || '由 AI 生成的練習內容。',
-        level: result.level || 'N1',
-        category: result.category || '學習',
+        title: result.title || '新生成的練習',
+        description: result.description || 'AI 分析內容',
+        level: result.level || 'N2',
+        category: result.category || '一般',
         content: result.content || inputText,
         translationLiteral: result.translationLiteral || '',
         translationNatural: result.translationNatural || '',
-        vocabulary: result.vocabulary || [],
-        insight: result.insight || '',
-        image: `https://picsum.photos/seed/${result.category || 'study'}/1000/600`,
+        vocabulary: [], // Start empty for on-demand
+        insight: '',    // Start empty for on-demand
+        image: `https://picsum.photos/seed/${Date.now()}/1000/600`,
         readTime: '閱讀需 5 分鐘'
       };
 
@@ -112,60 +141,130 @@ export default function App() {
       setInputText('');
     } catch (error) {
       console.error("Synthesis failed:", error);
-      alert("合成失敗，請檢查您的 API Key 設定。");
+      alert("合成失敗，請確認 API Key 與模型選擇。");
     } finally {
       setIsSynthesizing(false);
+    }
+  };
+
+  const handleFetchVocab = async (article: Article) => {
+    try {
+      const vocab = await fetchVocabulary(article.content, apiKey, selectedModel);
+      handleUpdateArticle(article.id, { vocabulary: vocab });
+    } catch (error) {
+      console.error("Vocab fetch failed:", error);
+    }
+  };
+
+  const handleFetchInsight = async (article: Article) => {
+    try {
+      const insight = await fetchLinguisticInsight(article.content, apiKey, selectedModel);
+      handleUpdateArticle(article.id, { insight });
+    } catch (error) {
+      console.error("Insight fetch failed:", error);
+    }
+  };
+
+  const renderContent = () => {
+    if (selectedArticle) {
+      return (
+        <LessonView 
+          article={selectedArticle} 
+          onBack={() => setSelectedArticle(null)}
+          onFetchVocab={() => handleFetchVocab(selectedArticle)}
+          onFetchInsight={() => handleFetchInsight(selectedArticle)}
+        />
+      );
+    }
+
+    switch (activeTab) {
+      case 'dashboard':
+        return (
+          <motion.div
+            key="dashboard"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+              <div>
+                <h1 className="text-4xl font-headline font-bold text-primary tracking-tight italic">當前學習進度</h1>
+                <p className="text-on-surface-variant mt-2 font-bold opacity-60">探索您的個人化語言路徑</p>
+              </div>
+              <div className="flex gap-3">
+                <div className="px-5 py-2.5 bg-secondary/10 text-secondary rounded-full text-sm font-black flex items-center gap-2 shadow-sm border border-secondary/20">
+                  <Zap size={18} className="fill-current" /> 連續學習 34 天
+                </div>
+              </div>
+            </header>
+            <SynthesisPanel 
+              inputText={inputText}
+              setInputText={setInputText}
+              onSynthesize={handleSynthesize}
+              isSynthesizing={isSynthesizing}
+            />
+            <ArticleGrid 
+              articles={articles} 
+              onSelectArticle={setSelectedArticle} 
+            />
+          </motion.div>
+        );
+      case 'translator':
+        return (
+          <motion.div
+            key="translator"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="max-w-4xl mx-auto"
+          >
+             <h2 className="text-3xl font-headline font-bold text-primary mb-8 text-center italic">智能編譯空間</h2>
+             <SynthesisPanel 
+                inputText={inputText}
+                setInputText={setInputText}
+                onSynthesize={handleSynthesize}
+                isSynthesizing={isSynthesizing}
+              />
+          </motion.div>
+        );
+      case 'courses':
+        return (
+          <motion.div
+            key="courses"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <h2 className="text-2xl font-headline font-bold text-primary mb-8 border-b border-primary/10 pb-4">我的學習庫</h2>
+            <ArticleGrid 
+              articles={articles} 
+              onSelectArticle={setSelectedArticle} 
+            />
+          </motion.div>
+        );
+      default:
+        return (
+          <div className="flex flex-col items-center justify-center py-20 opacity-30">
+            <h2 className="text-xl font-bold italic">研發中內容...</h2>
+            <p className="text-xs uppercase tracking-widest mt-2 font-black">Coming Soon in Next Update</p>
+          </div>
+        );
     }
   };
 
   return (
     <div className="min-h-screen bg-surface">
       <Header onOpenSettings={() => setIsSettingsOpen(true)} />
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={(tab) => {
+          setActiveTab(tab);
+          setSelectedArticle(null); // Switch back to main tab when clicking sidebar
+        }} 
+      />
 
       <main className="md:pl-64 pt-16 min-h-screen">
-        <div className="max-w-6xl mx-auto p-8">
+        <div className="max-w-6xl mx-auto p-8 lg:p-12">
           <AnimatePresence mode="wait">
-            {!selectedArticle ? (
-              <motion.div
-                key="dashboard"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                {/* Dashboard Header */}
-                <header className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
-                  <div>
-                    <h1 className="text-4xl font-headline font-bold text-primary tracking-tight">當前學習進度</h1>
-                    <p className="text-on-surface-variant mt-2 font-bold">當前進度：已完成 N1 目標的 84%</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <div className="px-5 py-2.5 bg-secondary-container text-on-secondary-container rounded-full text-sm font-black flex items-center gap-2 shadow-sm">
-                      <Zap size={18} className="fill-current" /> 連續學習 34 天
-                    </div>
-                  </div>
-                </header>
-
-                {/* Generator Interface */}
-                <SynthesisPanel 
-                  inputText={inputText}
-                  setInputText={setInputText}
-                  onSynthesize={handleSynthesize}
-                  isSynthesizing={isSynthesizing}
-                />
-
-                {/* Article Grid */}
-                <ArticleGrid 
-                  articles={articles} 
-                  onSelectArticle={setSelectedArticle} 
-                />
-              </motion.div>
-            ) : (
-              <LessonView 
-                article={selectedArticle} 
-                onBack={() => setSelectedArticle(null)} 
-              />
-            )}
+            {renderContent()}
           </AnimatePresence>
         </div>
       </main>

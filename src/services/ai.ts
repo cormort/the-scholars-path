@@ -29,58 +29,91 @@ export const listAvailableModels = async (apiKey: string): Promise<string[]> => 
   }
 };
 
-export const synthesizeArticle = async (
+export const createBaseLesson = async (
   inputText: string, 
   apiKey: string, 
   modelName: string = "models/gemini-1.5-flash"
 ): Promise<Partial<Article>> => {
-  if (!apiKey) {
-    throw new Error("API Key is required for synthesis.");
-  }
-
   const ai = new GoogleGenAI({ apiKey });
   const model = ai.models.getGenerativeModel({ model: modelName });
   const response = await model.generateContent({
     contents: [{
       role: 'user',
       parts: [{
-        text: `Analyze this Japanese text and provide a learning drill. 
-        Return a JSON object with: title, description, level (N1-N5), category, content (the original text), 
-        translationLiteral, translationNatural, vocabulary (array of {word, reading, meaning, level}), 
-        and insight (a short linguistic note).
-        
-        Text: ${inputText}`
+        text: `你是一位精通日文與繁體中文的專業翻譯達人。你的任務是協助協助日語學習者進行文本轉換。
+
+        ### 行為準則：
+        1. 針對內容進行兩次翻譯：
+           - translationLiteral: 直譯，力求忠於原文字句。
+           - translationNatural: 意譯，調整為台灣在地慣用講法。
+        2. 保留在原文中的俚語、專有名稱，並在原文後方以括號 () 標註繁體中文翻譯。
+        3. 當提及台灣相關地名時，不須冠以『中國』二字。
+
+        ### 輸出格式：
+        請返回 JSON：
+        {
+          "title": "專業標題",
+          "description": "背景描述",
+          "level": "N1-N5",
+          "category": "分類",
+          "content": "標註過術語的原文",
+          "translationLiteral": "直譯結果",
+          "translationNatural": "意譯結果"
+        }
+
+        待分析文本：
+        ${inputText}`
       }]
     }],
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING },
-          description: { type: Type.STRING },
-          level: { type: Type.STRING },
-          category: { type: Type.STRING },
-          content: { type: Type.STRING },
-          translationLiteral: { type: Type.STRING },
-          translationNatural: { type: Type.STRING },
-          vocabulary: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                word: { type: Type.STRING },
-                reading: { type: Type.STRING },
-                meaning: { type: Type.STRING },
-                level: { type: Type.STRING },
-              }
-            }
-          },
-          insight: { type: Type.STRING }
-        }
-      }
-    }
+    generationConfig: { responseMimeType: "application/json" }
   });
 
   return JSON.parse(response.text || '{}');
+};
+
+export const fetchVocabulary = async (
+  inputText: string, 
+  apiKey: string, 
+  modelName: string = "models/gemini-1.5-flash"
+): Promise<Article['vocabulary']> => {
+  const ai = new GoogleGenAI({ apiKey });
+  const model = ai.models.getGenerativeModel({ model: modelName });
+  const response = await model.generateContent({
+    contents: [{
+      role: 'user',
+      parts: [{
+        text: `請從以下日文文本中萃取 5-8 個關鍵詞彙。
+        返回格式：JSON 陣列 [{"word": "單字", "reading": "讀音", "meaning": "繁中意義", "level": "N1-N5"}]
+        
+        文本：
+        ${inputText}`
+      }]
+    }],
+    generationConfig: { responseMimeType: "application/json" }
+  });
+
+  return JSON.parse(response.text || '[]');
+};
+
+export const fetchLinguisticInsight = async (
+  inputText: string, 
+  apiKey: string, 
+  modelName: string = "models/gemini-1.5-flash"
+): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey });
+  const model = ai.models.getGenerativeModel({ model: modelName });
+  const response = await model.generateContent({
+    contents: [{
+      role: 'user',
+      parts: [{
+        text: `請針對以下日文文本，提供專業的語言點評、文法解析或文化脈絡說明。
+        以繁體中文撰寫，字數約 100-200 字，展現專家視野。
+        
+        文本：
+        ${inputText}`
+      }]
+    }]
+  });
+
+  return response.text || '';
 };
