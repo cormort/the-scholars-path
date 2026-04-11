@@ -4,6 +4,7 @@ import { Search, Volume2, Bookmark, Filter } from 'lucide-react';
 import { Article } from '../../../types';
 import { Card } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
+import { useJapaneseVoice } from '../../../hooks/useJapaneseVoice';
 
 interface GlossaryViewProps {
   articles: Article[];
@@ -20,10 +21,14 @@ export const GlossaryView = ({ articles }: GlossaryViewProps) => {
       article.vocabulary?.forEach(v => {
         // Use word as key to avoid duplicates across articles
         vocabMap.set(v.word, { ...v, sourceTitle: article.title });
-      });
+});
+
+
     });
     return Array.from(vocabMap.values());
   }, [articles]);
+
+  const voice = useJapaneseVoice();
 
   const filteredVocab = allVocab.filter(v => {
     const matchesSearch = v.word.includes(searchTerm) || v.meaning.includes(searchTerm) || v.reading.includes(searchTerm);
@@ -31,11 +36,16 @@ export const GlossaryView = ({ articles }: GlossaryViewProps) => {
     return matchesSearch && matchesLevel;
   });
 
-  const handleSpeak = (text: string) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ja-JP';
-    window.speechSynthesis.speak(utterance);
-  };
+const handleSpeak = (text: string) => {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ja-JP';
+  // Use the resolved Japanese voice if available for better pronunciation.
+  if (voice) utterance.voice = voice;
+  // Optionally adjust rate/pitch for a natural feel.
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  window.speechSynthesis.speak(utterance);
+};
 
   const levels = ['All', 'N1', 'N2', 'N3', 'N4', 'N5'];
 

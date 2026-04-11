@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Volume2, BrainCircuit, Bookmark, Lightbulb } from 'lucide-react';
 import { Article } from '../../../types';
 import { Button } from '../../ui/Button';
+import { useJapaneseVoice } from '../../../hooks/useJapaneseVoice';
 import { Card } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 
@@ -17,6 +18,7 @@ export const LessonView = ({ article, onBack, onFetchVocab, onFetchInsight }: Le
   const [isFetchingVocab, setIsFetchingVocab] = React.useState(false);
   const [isFetchingInsight, setIsFetchingInsight] = React.useState(false);
   const [isSpeaking, setIsSpeaking] = React.useState(false);
+  const voice = useJapaneseVoice();
 
   const handleFetchVocab = async () => {
     setIsFetchingVocab(true);
@@ -30,16 +32,21 @@ export const LessonView = ({ article, onBack, onFetchVocab, onFetchInsight }: Le
     setIsFetchingInsight(false);
   };
 
-  const handleSpeak = (text: string) => {
-    if (isSpeaking) return;
-    setIsSpeaking(true);
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'ja-JP';
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  };
+const handleSpeak = (text: string) => {
+  if (isSpeaking) return;
+  setIsSpeaking(true);
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ja-JP';
+  // If a Japanese voice has been resolved, use it for higher quality.
+  if (voice) utterance.voice = voice;
+  // Optional: fine‑tune speed/pitch for natural feel.
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+  utterance.onend = () => setIsSpeaking(false);
+  utterance.onerror = () => setIsSpeaking(false);
+  window.speechSynthesis.speak(utterance);
+};
 
   return (
     <motion.div
