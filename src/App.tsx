@@ -166,7 +166,7 @@ export default function App() {
         readTime: '閱讀需 5 分鐘'
       };
 
-      setArticles([newArticle, ...articles]);
+      setArticles(prev => [newArticle, ...prev]);
       setSelectedArticle(newArticle);
       setInputText('');
     } catch (error: any) {
