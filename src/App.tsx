@@ -78,7 +78,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
   const [availableModels, setAvailableModels] = useState<string[]>(['models/gemini-1.5-flash', 'models/gemini-1.5-pro']);
-  const [selectedModel, setSelectedModel] = useState('models/gemini-1.5-flash');
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('gemini_selected_model') || 'models/gemini-1.5-flash');
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   // Persistence: Load articles from localStorage or use initial
@@ -99,10 +99,15 @@ export default function App() {
     if (apiKey && apiKey.length >= 20) {
       const timer = setTimeout(() => {
         handleFetchModels(apiKey);
-      }, 500); // 500ms debounce
+      }, 800); // 800ms debounce for stability
       return () => clearTimeout(timer);
     }
   }, [apiKey]);
+
+  // Save Selected Model
+  React.useEffect(() => {
+    localStorage.setItem('gemini_selected_model', selectedModel);
+  }, [selectedModel]);
 
   const handleFetchModels = async (key: string) => {
     if (!key || key.length < 20) return;
@@ -110,8 +115,19 @@ export default function App() {
     try {
       const models = await listAvailableModels(key);
       setAvailableModels(models);
-      if (models.length > 0 && !models.includes(selectedModel)) {
-        setSelectedModel(models[0]);
+      
+      // Auto-switch logic:
+      if (models.length > 0) {
+        // If current model is not in list OR we were using the hardcoded default
+        const isCurrentlyDefault = selectedModel === 'models/gemini-1.5-flash' && !localStorage.getItem('gemini_selected_model');
+        
+        if (!models.includes(selectedModel) || isCurrentlyDefault) {
+          // Prefer flash models if available as they are faster
+          const preferredModel = models.find(m => m.includes('flash-exp')) || 
+                                models.find(m => m.includes('flash')) || 
+                                models[0];
+          setSelectedModel(preferredModel);
+        }
       }
     } finally {
       setIsFetchingModels(false);
