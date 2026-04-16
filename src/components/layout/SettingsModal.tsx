@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Key, ShieldCheck, Zap } from 'lucide-react';
+import { X, Key, ShieldCheck, Zap, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../ui/Button';
 
 interface SettingsModalProps {
@@ -26,6 +26,8 @@ export const SettingsModal = ({
   isFetchingModels,
   onFetchModels
 }: SettingsModalProps) => {
+  const [showKey, setShowKey] = useState(false);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -87,12 +89,18 @@ export const SettingsModal = ({
                 <div className="relative">
                   <input 
                     className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg text-sm focus:ring-2 focus:ring-primary h-12 px-4 pr-12 shadow-sm" 
-                    type="password" 
+                    type={showKey ? "text" : "password"} 
                     placeholder="輸入您的 API Key..."
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                   />
-                  <Key size={18} className="absolute right-4 top-3.5 text-on-surface-variant/40" />
+                  <button 
+                    type="button"
+                    onClick={() => setShowKey(!showKey)}
+                    className="absolute right-4 top-3.5 text-on-surface-variant/40 hover:text-primary transition-colors"
+                  >
+                    {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
                 <p className="text-[10px] text-on-surface-variant leading-relaxed">
                   您的 API Key 將僅保存在本地瀏覽器中，不會上傳至我們的伺服器。
