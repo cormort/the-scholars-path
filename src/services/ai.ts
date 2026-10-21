@@ -6,26 +6,26 @@
 import { GoogleGenAI } from "@google/genai";
 import { Article } from "../types";
 
+export const DEFAULT_MODEL = 'models/gemini-2.5-flash';
+const FALLBACK_MODELS = [DEFAULT_MODEL, 'models/gemini-2.5-pro'];
+
 export const listAvailableModels = async (apiKey: string): Promise<string[]> => {
   try {
-    const ai = new GoogleGenAI({ apiKey });
-    // Note: The @google/genai library might not expose listModels directly in some versions
-    // If it's missing, we return a sane default list.
-    // However, the standard REST API and some library versions support it.
-    // For now, let's assume it's available or use a fallback.
-    const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
-    const response = await fetch(url);
+    // Key goes in a header, not the query string, so it stays out of URL logs.
+    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000', {
+      headers: { 'x-goog-api-key': apiKey },
+    });
     const data = await response.json();
     
     if (data.models) {
       return data.models
-        .filter((m: any) => m.supportedGenerationMethods.includes('generateContent'))
+        .filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
         .map((m: any) => m.name);
     }
-    return ['models/gemini-1.5-flash', 'models/gemini-1.5-pro'];
+    return FALLBACK_MODELS;
   } catch (error) {
     console.error("Failed to fetch models:", error);
-    return ['models/gemini-1.5-flash', 'models/gemini-1.5-pro'];
+    return FALLBACK_MODELS;
   }
 };
 
@@ -47,12 +47,13 @@ const parseAIResponse = (text: string) => {
 export const createBaseLesson = async (
   inputText: string, 
   apiKey: string, 
-  modelName: string = "models/gemini-1.5-flash"
+  modelName: string = DEFAULT_MODEL
 ): Promise<Partial<Article>> => {
-  const isUrl = inputText.startsWith('http');
+  const isUrl = /^https?:\/\//.test(inputText.trim());
   const ai = new GoogleGenAI({ apiKey });
   
-// Enable Google Search tool if it's a URL
+  // URL input needs the urlContext tool; Gemini rejects JSON mime type combined with tools,
+  // so URL mode relies on parseAIResponse stripping markdown fences instead.
    const response = await ai.models.generateContent({
      model: modelName,
      
@@ -85,7 +86,7 @@ export const createBaseLesson = async (
          注意：請務必只輸出 JSON 格式。`
        }]
      }],
-     config: { responseMimeType: "application/json", tools: isUrl ? [{ googleSearch: {} }] : undefined },
+     config: isUrl ? { tools: [{ urlContext: {} }] } : { responseMimeType: "application/json" },
    });
 
   return parseAIResponse(response.text || '{}');
@@ -94,7 +95,7 @@ export const createBaseLesson = async (
 export const fetchVocabulary = async (
   inputText: string, 
   apiKey: string, 
-  modelName: string = "models/gemini-1.5-flash"
+  modelName: string = DEFAULT_MODEL
 ): Promise<Article['vocabulary']> => {
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
@@ -112,13 +113,15 @@ export const fetchVocabulary = async (
     config: { responseMimeType: "application/json" }
   });
 
-  return parseAIResponse(response.text || '[]');
+  const vocab = parseAIResponse(response.text || '[]');
+  if (!Array.isArray(vocab)) throw new Error("AI 回傳的單字格式不正確。");
+  return vocab.filter(v => v && typeof v.word === 'string');
 };
 
 export const fetchLinguisticInsight = async (
   inputText: string, 
   apiKey: string, 
-  modelName: string = "models/gemini-1.5-flash"
+  modelName: string = DEFAULT_MODEL
 ): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey });
 const response = await ai.models.generateContent({

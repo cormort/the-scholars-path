@@ -15,7 +15,8 @@ import {
   createBaseLesson, 
   fetchVocabulary, 
   fetchLinguisticInsight, 
-  listAvailableModels 
+  listAvailableModels,
+  DEFAULT_MODEL
 } from './services/ai';
 
 // Layout Components
@@ -41,7 +42,7 @@ const INITIAL_ARTICLES: Article[] = [
     category: '文學',
     image: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?auto=format&fit=crop&q=80&w=1000',
     readTime: '閱讀需 12 分鐘',
-    content: '為了深刻理解日語文章，我們不僅需要理解上下文，還需要解讀作者在選詞中蘊含的情感。本文將探討現代文學中微妙的語義差異。',
+    content: '日本語の文章を深く理解するためには、文脈だけでなく、作者の言葉選びに込められた感情を読み解く必要がある。本稿では、現代文学における微妙な意味の違いを探求する。',
     translationLiteral: '為了深刻地理解日語句子，有必要解讀不僅僅是脈絡，還有作者的詞語選擇中被包含的情感。',
     translationNatural: '要真正領悟日語散文的精髓，必須超越表面細節，解讀隱藏在每個詞彙選擇背後的特定情感重量。',
     vocabulary: [
@@ -59,11 +60,11 @@ const INITIAL_ARTICLES: Article[] = [
     category: '經濟',
     image: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&q=80&w=1000',
     readTime: '閱讀需 8 分鐘',
-    content: '日本企業的數位轉型（DX）不僅僅是技術引進，更要求組織文化進行根本性的變革。',
+    content: '日本企業のデジタルトランスフォーメーション（DX）は、単なる技術導入にとどまらず、組織文化の根本的な変革を求めている。',
     translationLiteral: '日本企業的數位轉型（DX），不僅僅停留在單純的技術導入，還要求著組織文化的根本性的變革。',
     translationNatural: '日本商業領域的數位轉型遠不止於採用新技術；它要求從根本上對企業文化進行全面的翻修。',
     vocabulary: [
-      { word: '變革', reading: 'へんかく', meaning: '變革；改革。', level: 'N2' },
+      { word: '変革', reading: 'へんかく', meaning: '變革；改革。', level: 'N2' },
       { word: '根本的', reading: 'こんぽんてき', meaning: '根本的；徹底的。', level: 'N2' }
     ],
     insight: '「DX」一詞在日本商業語境中通常用來表示廣泛的策略轉變，而不僅僅是 IT 升級。'
@@ -72,20 +73,26 @@ const INITIAL_ARTICLES: Article[] = [
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
-  const [availableModels, setAvailableModels] = useState<string[]>(['models/gemini-1.5-flash', 'models/gemini-1.5-pro']);
-  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('gemini_selected_model') || 'models/gemini-1.5-flash');
+  const [availableModels, setAvailableModels] = useState<string[]>([DEFAULT_MODEL]);
+  const [selectedModel, setSelectedModel] = useState(() => localStorage.getItem('gemini_selected_model') || DEFAULT_MODEL);
   const [isFetchingModels, setIsFetchingModels] = useState(false);
 
   // Persistence: Load articles from localStorage or use initial
   const [articles, setArticles] = useState<Article[]>(() => {
-    const saved = localStorage.getItem('scholar_articles');
-    return saved ? JSON.parse(saved) : INITIAL_ARTICLES;
+    try {
+      const saved = localStorage.getItem('scholar_articles');
+      return saved ? JSON.parse(saved) : INITIAL_ARTICLES;
+    } catch {
+      return INITIAL_ARTICLES;
+    }
   });
+  // Derived from articles so async updates always land on the right article.
+  const selectedArticle = articles.find(a => a.id === selectedId) ?? null;
 
   // Save articles whenever they change
   React.useEffect(() => {
@@ -116,12 +123,9 @@ export default function App() {
       const models = await listAvailableModels(key);
       setAvailableModels(models);
       
-      // Auto-switch logic:
+      // Auto-switch only when the saved model is no longer offered
       if (models.length > 0) {
-        // If current model is not in list OR we were using the hardcoded default
-        const isCurrentlyDefault = selectedModel === 'models/gemini-1.5-flash' && !localStorage.getItem('gemini_selected_model');
-        
-        if (!models.includes(selectedModel) || isCurrentlyDefault) {
+        if (!models.includes(selectedModel)) {
           // Prefer flash models if available as they are faster
           const preferredModel = models.find(m => m.includes('flash-exp')) || 
                                 models.find(m => m.includes('flash')) || 
@@ -136,9 +140,6 @@ export default function App() {
 
   const handleUpdateArticle = (id: string, updates: Partial<Article>) => {
     setArticles(prev => prev.map(art => art.id === id ? { ...art, ...updates } : art));
-    if (selectedArticle?.id === id) {
-      setSelectedArticle(prev => prev ? { ...prev, ...updates } : null);
-    }
   };
 
   const handleSynthesize = async () => {
@@ -167,7 +168,7 @@ export default function App() {
       };
 
       setArticles(prev => [newArticle, ...prev]);
-      setSelectedArticle(newArticle);
+      setSelectedId(newArticle.id);
       setInputText('');
     } catch (error: any) {
       console.error("Synthesis failed details:", error);
@@ -179,20 +180,24 @@ export default function App() {
   };
 
   const handleFetchVocab = async (article: Article) => {
+    if (!apiKey) return setIsSettingsOpen(true);
     try {
-      const vocab = await fetchVocabulary(article.content, apiKey, selectedModel);
+      const vocab = await fetchVocabulary(article.content ?? '', apiKey, selectedModel);
       handleUpdateArticle(article.id, { vocabulary: vocab });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Vocab fetch failed:", error);
+      alert(`單字萃取失敗：${error.message || "未知錯誤"}`);
     }
   };
 
   const handleFetchInsight = async (article: Article) => {
+    if (!apiKey) return setIsSettingsOpen(true);
     try {
-      const insight = await fetchLinguisticInsight(article.content, apiKey, selectedModel);
+      const insight = await fetchLinguisticInsight(article.content ?? '', apiKey, selectedModel);
       handleUpdateArticle(article.id, { insight });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Insight fetch failed:", error);
+      alert(`洞察生成失敗：${error.message || "未知錯誤"}`);
     }
   };
 
@@ -201,7 +206,7 @@ export default function App() {
       return (
         <LessonView 
           article={selectedArticle} 
-          onBack={() => setSelectedArticle(null)}
+          onBack={() => setSelectedId(null)}
           onFetchVocab={() => handleFetchVocab(selectedArticle)}
           onFetchInsight={() => handleFetchInsight(selectedArticle)}
         />
@@ -236,7 +241,7 @@ export default function App() {
             />
             <ArticleGrid 
               articles={articles} 
-              onSelectArticle={setSelectedArticle} 
+              onSelectArticle={a => setSelectedId(a.id)} 
             />
           </motion.div>
         );
@@ -267,7 +272,7 @@ export default function App() {
             <h2 className="text-2xl font-headline font-bold text-primary mb-8 border-b border-primary/10 pb-4">我的學習庫</h2>
             <ArticleGrid 
               articles={articles} 
-              onSelectArticle={setSelectedArticle} 
+              onSelectArticle={a => setSelectedId(a.id)} 
             />
           </motion.div>
         );
@@ -275,7 +280,7 @@ export default function App() {
         return (
           <InsightsView 
             articles={articles} 
-            onSelectArticle={setSelectedArticle}
+            onSelectArticle={a => setSelectedId(a.id)}
           />
         );
       case 'glossary':
@@ -301,7 +306,7 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={(tab) => {
           setActiveTab(tab);
-          setSelectedArticle(null); // Switch back to main tab when clicking sidebar
+          setSelectedId(null); // Switch back to main tab when clicking sidebar
         }} 
       />
 

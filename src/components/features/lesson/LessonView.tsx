@@ -10,8 +10,8 @@ import { Badge } from '../../ui/Badge';
 interface LessonViewProps {
   article: Article;
   onBack: () => void;
-  onFetchVocab: () => void;
-  onFetchInsight: () => void;
+  onFetchVocab: () => Promise<void>;
+  onFetchInsight: () => Promise<void>;
 }
 
 export const LessonView = ({ article, onBack, onFetchVocab, onFetchInsight }: LessonViewProps) => {
@@ -22,14 +22,12 @@ export const LessonView = ({ article, onBack, onFetchVocab, onFetchInsight }: Le
 
   const handleFetchVocab = async () => {
     setIsFetchingVocab(true);
-    await onFetchVocab();
-    setIsFetchingVocab(false);
+    try { await onFetchVocab(); } finally { setIsFetchingVocab(false); }
   };
 
   const handleFetchInsight = async () => {
     setIsFetchingInsight(true);
-    await onFetchInsight();
-    setIsFetchingInsight(false);
+    try { await onFetchInsight(); } finally { setIsFetchingInsight(false); }
   };
 
 const handleSpeak = (text: string) => {
@@ -73,7 +71,7 @@ const handleSpeak = (text: string) => {
             <div className="flex justify-between items-start mb-6">
               <Badge variant="secondary">練習主題</Badge>
               <button 
-                onClick={() => handleSpeak(article.content)}
+                onClick={() => handleSpeak(article.content ?? '')}
                 disabled={isSpeaking}
                 className={`p-4 rounded-2xl bg-surface-container-low text-primary hover:bg-white transition-all shadow-sm ${isSpeaking ? 'animate-pulse' : 'active:scale-95'}`}
               >
@@ -117,7 +115,7 @@ const handleSpeak = (text: string) => {
                 isLoading={isFetchingVocab}
                 disabled={article.vocabulary && article.vocabulary.length > 0}
             >
-              <Bookmark size={22} /> {article.vocabulary?.length ? '已萃取單字' : '萃取關鍵單單字'}
+              <Bookmark size={22} /> {article.vocabulary?.length ? '已萃取單字' : '萃取關鍵單字'}
             </Button>
           </div>
         </div>

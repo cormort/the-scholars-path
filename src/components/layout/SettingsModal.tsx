@@ -70,7 +70,6 @@ export const SettingsModal = ({
                   className="w-full bg-surface-container-low border border-outline-variant/50 rounded-lg text-sm focus:ring-2 focus:ring-primary h-12 px-4 shadow-sm font-bold disabled:opacity-50"
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
-                  disabled={false}
                 >
                   {availableModels.length > 0 ? (
                     availableModels.map(model => (
@@ -79,7 +78,7 @@ export const SettingsModal = ({
                       </option>
                     ))
                   ) : (
-                    <option value="models/gemini-1.5-flash">GEMINI-1.5-FLASH (預設)</option>
+                    <option value={selectedModel}>{selectedModel.replace('models/', '').toUpperCase()}</option>
                   )}
                 </select>
               </div>

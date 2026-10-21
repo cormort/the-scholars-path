@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Search, Volume2, Bookmark, Filter } from 'lucide-react';
-import { Article } from '../../../types';
+import { Article, Vocabulary } from '../../../types';
 import { Card } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { useJapaneseVoice } from '../../../hooks/useJapaneseVoice';
@@ -16,7 +16,7 @@ export const GlossaryView = ({ articles }: GlossaryViewProps) => {
 
   // Flatten all vocabulary from all articles
   const allVocab = useMemo(() => {
-    const vocabMap = new Map();
+    const vocabMap = new Map<string, Vocabulary & { sourceTitle: string }>();
     articles.forEach(article => {
       article.vocabulary?.forEach(v => {
         // Use word as key to avoid duplicates across articles
@@ -31,7 +31,7 @@ export const GlossaryView = ({ articles }: GlossaryViewProps) => {
   const voice = useJapaneseVoice();
 
   const filteredVocab = allVocab.filter(v => {
-    const matchesSearch = v.word.includes(searchTerm) || v.meaning.includes(searchTerm) || v.reading.includes(searchTerm);
+    const matchesSearch = [v.word, v.meaning, v.reading].some(f => f?.includes(searchTerm));
     const matchesLevel = levelFilter === 'All' || v.level === levelFilter;
     return matchesSearch && matchesLevel;
   });
@@ -94,7 +94,7 @@ const handleSpeak = (text: string) => {
               key={v.word}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: idx * 0.05 }}
+              transition={{ delay: Math.min(idx, 10) * 0.05 }}
             >
               <Card className="p-6 border-[#e5e1d5] hover:border-secondary/30 transition-all group relative overflow-hidden bg-white">
                 <div className="absolute top-0 right-0 p-4 opacity-[0.03] pointer-events-none">

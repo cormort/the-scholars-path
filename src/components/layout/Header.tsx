@@ -6,8 +6,8 @@ export const Header = ({ onOpenSettings }: { onOpenSettings: () => void }) => (
     <div className="flex items-center gap-2">
       <span className="text-2xl font-headline font-bold tracking-tight text-primary">學者之路</span>
     </div>
-    <div className="hidden md:flex items-center gap-8">
-      <nav className="flex gap-6 text-sm font-bold">
+    <div className="flex items-center gap-8">
+      <nav className="hidden md:flex gap-6 text-sm font-bold">
         <a className="text-primary hover:text-secondary transition-colors" href="#">學習概覽</a>
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">文章列表</a>
         <a className="text-on-surface-variant hover:text-primary transition-colors" href="#">社群討論</a>
